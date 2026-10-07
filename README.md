@@ -2,12 +2,24 @@
 
 Very minimalist live poll for talks / presentations.
 
-Show a claim on your own set of slides; the audience then opens a URL on their phones and rates their agreement on a slider from 1 to 10.
+Show a claim on your own set of slides; the audience then opens a URL on their phones and rates their agreement on a slider from 0 to 10.
 
 You can then view and show the average score and distribution of ratings.
 
 - **Audience page** (`index.html`): one slider, 0–10 in 0.1 steps. **No login**, saves immediately.
 - **Host page** (`host.html`): average, n, median, SD, histogram, join QR code. Google sign-in, locked to one account.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/host-dark.png" />
+  <img src="docs/host-light.png" alt="Host view: round number, open badge, average 6.7, median 7.0, SD 1.9 over 23 votes, histogram of votes from 0 to 10, and a join QR code" width="100%" />
+</picture>
+
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/audience-dark.png" />
+    <img src="docs/audience-light.png" alt="Audience view on a phone: round number, a vote of 7.3, the 0 to 10 slider, and a Saved status" width="260" />
+  </picture>
+</p>
 
 It's plain HTML, CSS, and JS with no build step. Any static host works; the steps below use GitHub Pages. Shared state lives in Firebase (Cloud Firestore + Auth).
 
