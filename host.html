@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light dark" />
+    <title>Vote — Host</title>
+    <link rel="icon" href="data:," />
+    <link rel="stylesheet" href="app.css" />
+    <script
+      src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"
+      integrity="sha512-CNgIRecGo7nphbeZ04Sc13ka07paqdeTu0WR1IM4kNcpmBAUSHSQX0FslNhTDadL4O5SAGapGt4FodqL8My0mA=="
+      crossorigin="anonymous"
+      referrerpolicy="no-referrer"
+      defer
+    ></script>
+    <script type="module" src="host.js"></script>
+  </head>
+  <body>
+    <div class="notice" id="gate">
+      <strong id="gate-title">&nbsp;</strong>
+      <p id="gate-text"></p>
+      <div class="account" id="account" hidden>
+        <span class="label">Your uid</span>
+        <code id="uid"></code>
+      </div>
+      <div>
+        <button id="sign-in" hidden>Sign in with Google</button>
+        <button id="gate-sign-out" hidden>Sign out</button>
+      </div>
+    </div>
+
+    <main class="host" id="host" hidden>
+      <header class="host__head">
+        <div class="host__round">
+          <span class="num" id="round">&nbsp;</span>
+          <span class="badge" id="badge"></span>
+        </div>
+        <button class="join" id="join" title="Show join QR (Q)">
+          <span class="join__url" id="join-url"></span>
+          <span class="qr" id="qr-small"></span>
+        </button>
+      </header>
+
+      <section class="board is-hidden" id="board">
+        <div class="stats">
+          <div class="stat stat--avg">
+            <div class="label">Average</div>
+            <div class="stat__value num veil" id="avg">—</div>
+          </div>
+          <div class="stats__row">
+            <div class="stat">
+              <div class="label">Votes</div>
+              <div class="stat__value num" id="n">0</div>
+            </div>
+            <div class="stat">
+              <div class="label">Median</div>
+              <div class="stat__value num veil" id="median">—</div>
+            </div>
+            <div class="stat">
+              <div class="label">SD</div>
+              <div class="stat__value num veil" id="sd">—</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="hist">
+          <div class="hist__bars veil" id="bars"></div>
+          <div class="hist__axis num" id="axis"></div>
+          <div class="hist__note">Results hidden</div>
+        </div>
+      </section>
+
+      <footer class="host__foot">
+        <button id="next"><kbd>N</kbd>Next round</button>
+        <button id="toggle-open"><kbd>C</kbd><span></span></button>
+        <button id="toggle-results"><kbd>H</kbd><span></span></button>
+        <button id="show-qr"><kbd>Q</kbd>Join QR</button>
+        <span class="hint" id="msg" role="status"></span>
+        <span class="spacer"></span>
+        <button class="link" id="sign-out">Sign out</button>
+      </footer>
+
+      <details class="past" id="past">
+        <summary>Past rounds</summary>
+        <table>
+          <thead>
+            <tr><th>Round</th><th>n</th><th>Average</th></tr>
+          </thead>
+          <tbody class="num" id="past-rows"></tbody>
+        </table>
+      </details>
+    </main>
+
+    <div class="overlay" id="overlay" hidden>
+      <div class="qr" id="qr-big"></div>
+      <div class="overlay__url" id="overlay-url"></div>
+    </div>
+  </body>
+</html>
