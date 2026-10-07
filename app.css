@@ -482,6 +482,10 @@ button.link {
   border: 0;
 }
 
+button.link + button.link {
+  margin-left: 0.9rem;
+}
+
 button.link:hover {
   color: var(--text);
 }

@@ -12,6 +12,7 @@ import {
   getDocs,
   setDoc,
   updateDoc,
+  writeBatch,
   onSnapshot,
   serverTimestamp,
   increment,
@@ -138,6 +139,34 @@ function nextRound(fromKeyboard) {
 
 const toggleOpen = () => write({ open: !open });
 
+// Round 1 must start empty, or phones would reload last session's votes, so
+// reset deletes every round's votes. Voting closes first so nothing lands mid-delete.
+async function resetRounds() {
+  if (busy || round === null) return;
+  const last = round;
+  if (!confirm(`Reset to round 1? This permanently deletes the votes from all ${last} rounds.`)) return;
+  busy = true;
+  say("Resetting…");
+  try {
+    await updateDoc(stateRef, { open: false, updated: serverTimestamp() });
+    const snaps = await Promise.all(
+      Array.from({ length: last }, (_, i) => getDocs(collection(db, "rounds", String(i + 1), "votes"))),
+    );
+    const refs = snaps.flatMap((s) => s.docs.map((d) => d.ref));
+    for (let i = 0; i < refs.length; i += 500) {
+      const batch = writeBatch(db); // 500 writes per batch max
+      refs.slice(i, i + 500).forEach((ref) => batch.delete(ref));
+      await batch.commit();
+    }
+    await setDoc(stateRef, { round: 1, open: true, updated: serverTimestamp() });
+    say(`Reset to round 1, deleted ${refs.length} votes`);
+  } catch (err) {
+    say(`Reset failed: ${err.code ?? err.message}`, true);
+  } finally {
+    busy = false;
+  }
+}
+
 function toggleResults() {
   hidden = !hidden;
   render();
@@ -248,6 +277,7 @@ $("next").addEventListener("click", () => nextRound(false));
 $("toggle-open").addEventListener("click", toggleOpen);
 $("toggle-results").addEventListener("click", toggleResults);
 $("show-qr").addEventListener("click", () => toggleQr(true));
+$("reset").addEventListener("click", resetRounds);
 $("join").addEventListener("click", () => toggleQr(true));
 $("overlay").addEventListener("click", () => toggleQr(false));
 $("past").addEventListener("toggle", () => $("past").open && loadPast());

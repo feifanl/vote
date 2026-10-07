@@ -78,6 +78,8 @@ Results start hidden each round, so a projected running average doesn't anchor p
 
 Clicking **Next round** asks for confirmation if the round has votes; the `N` key doesn't, to keep things fast during a talk. Earlier rounds are listed under **Past rounds** at the bottom of the host page.
 
+**Reset to round 1** (footer, no shortcut) starts over for a new talk. It permanently deletes the votes from every round, after a confirmation.
+
 ## How it works
 
 ```
@@ -86,7 +88,8 @@ rounds/{round}/votes/{uid}  { value: 0–10, ts }
 ```
 
 - Each phone signs in anonymously and writes one document per round, keyed by its uid. Changing a vote overwrites it.
-- Next round only increments `round`. Nothing is deleted, so every past round stays in Firestore.
+- Next round only increments `round`. Nothing is deleted, so every past round stays in Firestore until you reset.
+- Reset closes voting, deletes every vote in rounds 1 through the current one, then sets `round` back to 1 with voting open.
 - The rules only let a voter write their own vote, only to the current round, only while voting is open, and only a number from 0 to 10 (the slider moves in 0.1 steps; the histogram rounds each vote to the nearest whole number). Only the host can change `state/current` or read other people's votes.
 
 ## Limits

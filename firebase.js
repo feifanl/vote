@@ -18,6 +18,7 @@ export {
   getDocs,
   setDoc,
   updateDoc,
+  writeBatch,
   onSnapshot,
   serverTimestamp,
   increment,
