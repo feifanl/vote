@@ -1,0 +1,31 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{db}/documents {
+
+    function isHost() {
+      return request.auth != null && request.auth.uid == 'm1o6NMh7M9MRLWos7aDTFv0crqt1';
+    }
+    function current() {
+      return get(/databases/$(db)/documents/state/current).data;
+    }
+
+    match /state/current {
+      allow read: if true;
+      allow write: if isHost();
+    }
+
+    match /rounds/{round}/votes/{uid} {
+      allow read: if isHost()
+                  || (request.auth != null && request.auth.uid == uid);
+      allow create, update: if request.auth != null
+        && request.auth.uid == uid
+        && current().open == true
+        && int(round) == current().round
+        && request.resource.data.keys().hasOnly(['value', 'ts'])
+        && request.resource.data.value is int
+        && request.resource.data.value >= 0
+        && request.resource.data.value <= 10;
+      allow delete: if isHost();
+    }
+  }
+}
