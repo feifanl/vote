@@ -6,7 +6,7 @@ Show a claim on your own set of slides; the audience then opens a URL on their p
 
 You can then view and show the average score and distribution of ratings.
 
-- **Audience page** (`index.html`): one slider, 0–10. **No login**, saves immediately.
+- **Audience page** (`index.html`): one slider, 0–10 in 0.1 steps. **No login**, saves immediately.
 - **Host page** (`host.html`): average, n, median, SD, histogram, join QR code. Google sign-in, locked to one account.
 
 It's plain HTML, CSS, and JS with no build step. Any static host works; the steps below use GitHub Pages. Shared state lives in Firebase (Cloud Firestore + Auth).
@@ -87,7 +87,7 @@ rounds/{round}/votes/{uid}  { value: 0–10, ts }
 
 - Each phone signs in anonymously and writes one document per round, keyed by its uid. Changing a vote overwrites it.
 - Next round only increments `round`. Nothing is deleted, so every past round stays in Firestore.
-- The rules only let a voter write their own vote, only to the current round, only while voting is open, and only an integer from 0 to 10. Only the host can change `state/current` or read other people's votes.
+- The rules only let a voter write their own vote, only to the current round, only while voting is open, and only a number from 0 to 10 (the slider moves in 0.1 steps; the histogram rounds each vote to the nearest whole number). Only the host can change `state/current` or read other people's votes.
 
 ## Limits
 

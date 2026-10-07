@@ -12,6 +12,7 @@ import {
 } from "./firebase.js";
 
 const MAX = 10;
+const snap = (v) => Math.round(Math.min(MAX, Math.max(0, v)) * 10) / 10; // 0.1 steps
 const OFFLINE_MSG = "Offline — your vote will save when you reconnect";
 
 const $round = document.getElementById("round");
@@ -47,7 +48,7 @@ function idleStatus() {
 
 function render() {
   const unset = value === null;
-  $value.textContent = unset ? "–" : String(value);
+  $value.textContent = unset ? "–" : value.toFixed(1);
   $value.classList.toggle("is-unset", unset);
   $slider.classList.toggle("is-unset", unset);
   $slider.style.setProperty("--pct", unset ? "0%" : `${(value / MAX) * 100}%`);
@@ -98,8 +99,7 @@ async function commit() {
 
 function valueAt(clientX) {
   const box = $slider.getBoundingClientRect();
-  const t = Math.min(1, Math.max(0, (clientX - box.left) / box.width));
-  return Math.round(t * MAX);
+  return snap(((clientX - box.left) / box.width) * MAX);
 }
 
 function endDrag() {
@@ -131,7 +131,7 @@ $slider.addEventListener("pointercancel", () => {
   commit();
 });
 
-const KEY_STEPS = { ArrowLeft: -1, ArrowDown: -1, ArrowRight: 1, ArrowUp: 1, PageDown: -2, PageUp: 2 };
+const KEY_STEPS = { ArrowLeft: -0.1, ArrowDown: -0.1, ArrowRight: 0.1, ArrowUp: 0.1, PageDown: -1, PageUp: 1 };
 
 $slider.addEventListener("keydown", (e) => {
   if (!canVote()) return;
@@ -141,7 +141,7 @@ $slider.addEventListener("keydown", (e) => {
   else if (e.key in KEY_STEPS) next = (value ?? MAX / 2) + (value === null ? 0 : KEY_STEPS[e.key]);
   else return;
   e.preventDefault();
-  pick(Math.min(MAX, Math.max(0, next)));
+  pick(snap(next));
   clearTimeout(keyTimer);
   keyTimer = setTimeout(commit, 600);
 });

@@ -22,7 +22,7 @@ service cloud.firestore {
         && current().open == true
         && int(round) == current().round
         && request.resource.data.keys().hasOnly(['value', 'ts'])
-        && request.resource.data.value is int
+        && request.resource.data.value is number
         && request.resource.data.value >= 0
         && request.resource.data.value <= 10;
       allow delete: if isHost();

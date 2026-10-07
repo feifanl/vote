@@ -43,7 +43,7 @@ let msgTimer = 0;
 function stats(values) {
   const n = values.length;
   const counts = Array(11).fill(0);
-  for (const v of values) counts[v]++;
+  for (const v of values) counts[Math.round(v)]++; // one bar per whole number
   if (!n) return { n, counts, mean: null, median: null, sd: null };
 
   const sorted = [...values].sort((a, b) => a - b);
@@ -56,10 +56,9 @@ function stats(values) {
 }
 
 const voteValues = (docs) =>
-  docs.map((d) => d.data().value).filter((v) => Number.isInteger(v) && v >= 0 && v <= 10);
+  docs.map((d) => d.data().value).filter((v) => typeof v === "number" && v >= 0 && v <= 10);
 
 const fmt = (x) => (x === null ? "—" : x.toFixed(1));
-const fmtMedian = (x) => (x === null ? "—" : Number.isInteger(x) ? String(x) : x.toFixed(1));
 
 /* ---------------------------------------------------------------- */
 /*  Render                                                           */
@@ -96,7 +95,7 @@ function render() {
   const shown = hidden ? stats(PLACEHOLDER) : real;
   $("n").textContent = real.n;
   $("avg").textContent = fmt(shown.mean);
-  $("median").textContent = fmtMedian(shown.median);
+  $("median").textContent = fmt(shown.median);
   $("sd").textContent = fmt(shown.sd);
 
   const max = Math.max(...shown.counts);
