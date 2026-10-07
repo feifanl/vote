@@ -1,0 +1,571 @@
+/* GitHub palette, same as WorkoutMetricsViz. Light variant follows Primer. */
+:root {
+  --bg: #ffffff;
+  --panel: #f6f8fa;
+  --border: #d0d7de;
+  --text: #1f2328;
+  --muted: #59636e;
+  --faint: #8c959f;
+  --accent: #1a7f37;
+  --accent-fill: #2da44e;
+  --danger: #cf222e;
+  --warn: #9a6700;
+  color-scheme: light dark;
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0d1117;
+    --panel: #161b22;
+    --border: #30363d;
+    --text: #e6edf3;
+    --muted: #8b949e;
+    --faint: #484f58;
+    --accent: #3ecf8e;
+    --accent-fill: #3ecf8e;
+    --danger: #ff7b72;
+    --warn: #d29922;
+  }
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+}
+
+html,
+body {
+  background: var(--bg);
+  color: var(--text);
+}
+
+body {
+  min-height: 100dvh;
+  -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
+}
+
+[hidden] {
+  display: none !important;
+}
+
+.num {
+  font-variant-numeric: tabular-nums;
+}
+
+.label {
+  font-size: 0.75rem;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.notice {
+  min-height: 100dvh;
+  display: grid;
+  place-content: center;
+  gap: 0.75rem;
+  padding: 1.5rem;
+  text-align: center;
+  color: var(--muted);
+}
+
+.notice strong {
+  color: var(--text);
+  font-size: 1.25rem;
+  font-weight: 600;
+}
+
+button {
+  font: inherit;
+  color: var(--text);
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 0.45rem 0.85rem;
+  cursor: pointer;
+}
+
+button:hover {
+  border-color: var(--muted);
+}
+
+button:focus-visible,
+.slider:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+
+kbd {
+  display: inline-block;
+  min-width: 1.4em;
+  margin-right: 0.4em;
+  padding: 0 0.3em;
+  font: inherit;
+  font-size: 0.8em;
+  text-align: center;
+  color: var(--muted);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+}
+
+/* ------------------------------------------------------------------ */
+/*  Audience                                                           */
+/* ------------------------------------------------------------------ */
+.voter {
+  height: 100dvh;
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  padding: max(1.25rem, env(safe-area-inset-top)) 1.5rem max(1.5rem, env(safe-area-inset-bottom));
+  overflow: hidden;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.voter__round {
+  justify-self: center;
+  font-size: 0.95rem;
+  color: var(--muted);
+  transition: color 0.6s ease;
+}
+
+.voter__round.is-new {
+  color: var(--accent);
+  animation: nudge 0.5s ease;
+}
+
+@keyframes nudge {
+  40% { transform: scale(1.15); }
+}
+
+.voter__main {
+  align-self: center;
+  width: 100%;
+  max-width: 34rem;
+  margin-inline: auto;
+}
+
+.voter__value {
+  margin-bottom: 2.5rem;
+  text-align: center;
+  font-size: clamp(5rem, 30vw, 8rem);
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: -0.02em;
+}
+
+.voter__value.is-unset {
+  color: var(--faint);
+  font-weight: 300;
+}
+
+.voter__status {
+  justify-self: center;
+  min-height: 1.4em;
+  font-size: 0.9rem;
+  color: var(--muted);
+  text-align: center;
+}
+
+.voter__status[data-tone="warn"] { color: var(--warn); }
+.voter__status[data-tone="error"] { color: var(--danger); }
+
+/* Custom slider: native range inputs on iOS can't be tapped to a position,
+   and an unset state needs the thumb to not exist yet. */
+.slider {
+  --pct: 0%;
+  position: relative;
+  height: 4rem;
+  margin-inline: 16px; /* half the thumb, so 0 and 10 stay on screen */
+  touch-action: none;
+  cursor: pointer;
+  outline: none;
+}
+
+.slider__track,
+.slider__fill {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  height: 6px;
+  margin-top: -3px;
+  border-radius: 3px;
+}
+
+.slider__track {
+  right: 0;
+  background: var(--border);
+}
+
+.slider__fill {
+  width: var(--pct);
+  background: var(--accent-fill);
+}
+
+.slider__thumb {
+  position: absolute;
+  top: 50%;
+  left: var(--pct);
+  width: 32px;
+  height: 32px;
+  margin: -16px 0 0 -16px;
+  border-radius: 50%;
+  background: var(--accent-fill);
+  box-shadow: 0 0 0 4px var(--bg);
+  transition: transform 0.12s ease;
+}
+
+.slider.is-dragging .slider__thumb {
+  transform: scale(1.12);
+}
+
+.slider__ticks {
+  position: absolute;
+  inset: calc(50% + 12px) 0 auto;
+  display: flex;
+  justify-content: space-between;
+}
+
+.slider__ticks span {
+  width: 2px;
+  height: 6px;
+  margin-inline: -1px;
+  border-radius: 1px;
+  background: var(--border);
+}
+
+.slider.is-unset .slider__fill,
+.slider.is-unset .slider__thumb {
+  visibility: hidden;
+}
+
+.slider[aria-disabled="true"],
+.voter__main:has(.slider[aria-disabled="true"]) .voter__value {
+  cursor: default;
+  opacity: 0.45;
+}
+
+.scale {
+  display: flex;
+  justify-content: space-between;
+  margin: 0.25rem 12px 0;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.scale span:last-child {
+  text-align: right;
+}
+
+.scale small {
+  display: block;
+  font-size: 0.75rem;
+  color: var(--faint);
+}
+
+/* ------------------------------------------------------------------ */
+/*  Host                                                               */
+/* ------------------------------------------------------------------ */
+.host {
+  min-height: 100dvh;
+  display: grid;
+  grid-template-rows: auto 1fr auto auto;
+  gap: clamp(1.25rem, 3vh, 2.5rem);
+  padding: clamp(1.25rem, 3vw, 2.5rem);
+}
+
+.host__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.5rem;
+}
+
+.host__round {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  font-size: clamp(1.5rem, 3vw, 2.25rem);
+  font-weight: 600;
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45em;
+  padding: 0.2em 0.7em;
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--muted);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+}
+
+.badge::before {
+  content: "";
+  width: 0.5em;
+  height: 0.5em;
+  border-radius: 50%;
+  background: var(--faint);
+}
+
+.badge.is-open {
+  color: var(--accent);
+  border-color: color-mix(in srgb, var(--accent) 45%, transparent);
+}
+
+.badge.is-open::before {
+  background: var(--accent);
+}
+
+.join {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0;
+  text-align: right;
+  background: none;
+  border: 0;
+}
+
+.join__url {
+  font-size: clamp(1rem, 1.8vw, 1.4rem);
+  font-weight: 500;
+}
+
+.qr {
+  padding: 6px;
+  line-height: 0;
+  background: #fff; /* always dark-on-light: scans reliably */
+  border-radius: 6px;
+}
+
+.qr img,
+.qr canvas {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.join .qr {
+  width: 88px;
+}
+
+.board {
+  display: grid;
+  grid-template-columns: minmax(14rem, 24rem) 1fr;
+  gap: clamp(1.5rem, 4vw, 4rem);
+  min-height: 0;
+}
+
+.stats {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  gap: 2rem;
+}
+
+.stat .label {
+  margin-bottom: 0.35rem;
+}
+
+.stat__value {
+  font-size: clamp(1.75rem, 3.5vw, 2.75rem);
+  font-weight: 600;
+  line-height: 1.1;
+}
+
+.stat--avg .stat__value {
+  font-size: clamp(5rem, 12vw, 10rem);
+  line-height: 0.95;
+  letter-spacing: -0.03em;
+}
+
+.stats__row {
+  display: flex;
+  gap: clamp(1.5rem, 3vw, 2.5rem);
+}
+
+.hist {
+  position: relative;
+  display: grid;
+  grid-template-rows: 1fr auto;
+  min-height: 16rem;
+  padding: 1.5rem 1.5rem 1rem;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.hist__bars,
+.hist__axis {
+  display: grid;
+  grid-template-columns: repeat(11, 1fr);
+  gap: clamp(0.35rem, 1vw, 0.9rem);
+}
+
+.hist__bars {
+  border-bottom: 1px solid var(--border);
+}
+
+.hist__col {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  text-align: center;
+}
+
+.hist__count {
+  margin-bottom: 0.35rem;
+  font-size: clamp(0.85rem, 1.4vw, 1.15rem);
+  font-weight: 500;
+}
+
+.hist__count.is-zero {
+  color: var(--faint);
+}
+
+.hist__bar {
+  height: calc((100% - 2.25rem) * var(--f, 0));
+  background: var(--accent-fill);
+  border-radius: 3px 3px 0 0;
+  transition: height 0.35s cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+
+.hist__axis {
+  padding-top: 0.5rem;
+  text-align: center;
+  font-size: clamp(0.85rem, 1.4vw, 1.15rem);
+  color: var(--muted);
+}
+
+.hist__note {
+  position: absolute;
+  inset: 0;
+  display: none;
+  place-items: center;
+  font-size: clamp(1rem, 1.8vw, 1.4rem);
+  color: var(--muted);
+}
+
+.is-hidden .hist__note {
+  display: grid;
+}
+
+/* Hidden results render placeholder data (see host.js), so blur can't leak. */
+.is-hidden .veil {
+  filter: blur(14px);
+  opacity: 0.6;
+}
+
+.veil {
+  transition: filter 0.3s ease, opacity 0.3s ease;
+}
+
+.host__foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.host__foot .spacer {
+  flex: 1;
+}
+
+button.link {
+  padding: 0.45rem 0;
+  color: var(--muted);
+  background: none;
+  border: 0;
+}
+
+button.link:hover {
+  color: var(--text);
+}
+
+.host__foot .hint {
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.past {
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+
+.past summary {
+  cursor: pointer;
+}
+
+.past table {
+  margin-top: 0.75rem;
+  border-collapse: collapse;
+}
+
+.past th,
+.past td {
+  padding: 0.25rem 1.25rem 0.25rem 0;
+  text-align: left;
+  font-weight: 400;
+}
+
+.past td {
+  color: var(--text);
+}
+
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 2rem;
+  background: var(--bg);
+  cursor: pointer;
+}
+
+.overlay .qr {
+  width: min(62vh, 80vw);
+  padding: 4%;
+  border-radius: 12px;
+}
+
+.overlay__url {
+  font-size: clamp(1.5rem, 4vw, 3rem);
+  font-weight: 600;
+}
+
+.account {
+  display: grid;
+  justify-items: center;
+  gap: 0.75rem;
+}
+
+.account code {
+  padding: 0.3rem 0.6rem;
+  font-size: 0.85rem;
+  color: var(--text);
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  user-select: all;
+}
+
+@media (max-width: 50rem) {
+  .board {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
