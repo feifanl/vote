@@ -2,30 +2,48 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{db}/documents {
 
-    function isHost() {
-      return request.auth != null && request.auth.uid == 'm1o6NMh7M9MRLWos7aDTFv0crqt1';
-    }
-    function current() {
-      return get(/databases/$(db)/documents/state/current).data;
-    }
+    // One session per host, keyed by its join code. Any Google account can host.
+    match /sessions/{code} {
+      function isOwner() {
+        return request.auth != null && resource.data.host == request.auth.uid;
+      }
 
-    match /state/current {
-      allow read: if true;
-      allow write: if isHost();
-    }
+      allow get: if true;
+      // Hosts find their own session with a where("host", "==", uid) query.
+      allow list: if isOwner();
+      allow create: if request.auth != null
+        && request.auth.token.firebase.sign_in_provider == 'google.com'
+        && code.matches('[2-9A-HJKMNP-Z]{5}')
+        && request.resource.data.keys().hasOnly(['host', 'round', 'open', 'updated'])
+        && request.resource.data.host == request.auth.uid
+        && request.resource.data.round == 1
+        && request.resource.data.open is bool;
+      allow update: if isOwner()
+        && request.resource.data.keys().hasOnly(['host', 'round', 'open', 'updated'])
+        && request.resource.data.host == resource.data.host
+        && request.resource.data.round is int
+        && request.resource.data.open is bool;
 
-    match /rounds/{round}/votes/{uid} {
-      allow read: if isHost()
-                  || (request.auth != null && request.auth.uid == uid);
-      allow create, update: if request.auth != null
-        && request.auth.uid == uid
-        && current().open == true
-        && int(round) == current().round
-        && request.resource.data.keys().hasOnly(['value', 'ts'])
-        && request.resource.data.value is number
-        && request.resource.data.value >= 0
-        && request.resource.data.value <= 10;
-      allow delete: if isHost();
+      match /rounds/{round}/votes/{uid} {
+        function session() {
+          return get(/databases/$(db)/documents/sessions/$(code)).data;
+        }
+        function isHost() {
+          return request.auth != null && request.auth.uid == session().host;
+        }
+
+        allow read: if isHost()
+                    || (request.auth != null && request.auth.uid == uid);
+        allow create, update: if request.auth != null
+          && request.auth.uid == uid
+          && session().open == true
+          && int(round) == session().round
+          && request.resource.data.keys().hasOnly(['value', 'ts'])
+          && request.resource.data.value is number
+          && request.resource.data.value >= 0
+          && request.resource.data.value <= 10;
+        allow delete: if isHost();
+      }
     }
   }
 }

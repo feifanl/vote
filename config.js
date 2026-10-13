@@ -8,6 +8,3 @@ export const firebaseConfig = {
   messagingSenderId: "780516373489",
   appId: "1:780516373489:web:effa450dc060177d768a50"
 };
-
-// Google account uid allowed to run host.html. Sign in on host.html to see yours.
-export const HOST_UID = "m1o6NMh7M9MRLWos7aDTFv0crqt1";

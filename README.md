@@ -6,8 +6,8 @@ Show a claim on your own set of slides; the audience then opens a URL on their p
 
 You can then view and show the average score and distribution of ratings.
 
-- **Audience page** (`index.html`): one slider, 0–10 in 0.1 steps. **No login**, saves immediately.
-- **Host page** (`host.html`): average, n, median, SD, histogram, join QR code. Google sign-in, locked to one account.
+- **Audience page** (`index.html?s=CODE`): one slider, 0–10 in 0.1 steps. **No login**, saves immediately. Without a code it asks for one.
+- **Host page** (`host.html`): average, n, median, SD, histogram, join QR code. Anyone can host by signing in with Google; each account gets its own poll and a 5-character join code.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/host-dark.png" />
@@ -37,7 +37,7 @@ Throughout, replace `<user>` with your GitHub username and `<repo>` with the rep
 
 Fork this repo, or copy its files into a new repo. The repo name becomes the URL path: a repo named `vote` is served at `https://<user>.github.io/vote/`.
 
-> **`config.js` and `firestore.rules` contain the original author's Firebase project and host uid.** Replace both with your own (steps 2 and 3). Otherwise your copy sends votes to someone else's database.
+> **`config.js` contains the original author's Firebase project.** Replace it with your own (step 2). Otherwise your copy sends votes to someone else's database.
 
 ### 2. Create the Firebase project
 
@@ -49,27 +49,25 @@ Fork this repo, or copy its files into a new repo. The repo name becomes the URL
 
 These config values are public by design: every visitor's browser receives them. Access control comes entirely from the security rules in step 3.
 
-### 3. Make yourself the host
+### 3. Publish the rules and try it
 
-1. Serve the folder locally from the repo root:
+1. In the Firebase console, go to **Firestore Database → Rules**, replace the contents with `firestore.rules`, and click **Publish**.
+2. Serve the folder locally from the repo root:
 
    ```bash
    python -m http.server 8000
    ```
 
-2. Open http://localhost:8000/host.html and sign in with Google. The page shows `Not authorized` and your uid.
-3. Paste that uid into `config.js` as `HOST_UID`, and into `firestore.rules` inside `isHost()`, replacing the uid that's there.
-4. In the Firebase console, go to **Firestore Database → Rules**, replace the contents with `firestore.rules`, and click **Publish**.
-5. Reload `host.html`. You now see the dashboard. On first load it creates `state/current` as `{ round: 1, open: true }`.
+3. Open http://localhost:8000/host.html and sign in with Google. On first sign-in it creates your session with a random join code, `{ host: <your uid>, round: 1, open: true }`. Signing in again later, from any browser, reopens the same session.
 
-To test voting, open http://localhost:8000/ in another browser or a phone on the same network. Each browser counts as one voter.
+To test voting, open the join URL shown on the host page (http://localhost:8000/?s=CODE) in another browser or a phone on the same network. Each browser counts as one voter.
 
 ### 4. Deploy
 
-Commit `config.js` and `firestore.rules` with your values and push. Then, on GitHub: **Settings → Pages → Build and deployment → Deploy from a branch**, branch `main`, folder `/ (root)`.
+Commit `config.js` with your values and push. Then, on GitHub: **Settings → Pages → Build and deployment → Deploy from a branch**, branch `main`, folder `/ (root)`.
 
-- Audience: `https://<user>.github.io/<repo>/`
-- Host: `https://<user>.github.io/<repo>/host.html`
+- Audience: `https://<user>.github.io/<repo>/?s=CODE` (or the bare URL, which asks for the code)
+- Host: `https://<user>.github.io/<repo>/host.html`, for anyone with a Google account
 
 The join URL and QR code on the host page come from wherever the page is served, so nothing else needs changing. If you name the repo `<user>.github.io`, the site is served at the domain root instead.
 
@@ -95,14 +93,15 @@ Clicking **Next round** asks for confirmation if the round has votes; the `N` ke
 ## How it works
 
 ```
-state/current               { round, open, updated }
-rounds/{round}/votes/{uid}  { value: 0–10, ts }
+sessions/{code}                            { host, round, open, updated }
+sessions/{code}/rounds/{round}/votes/{uid} { value: 0–10, ts }
 ```
 
+- Each host's session is keyed by its join code: 5 characters from `23456789ABCDEFGHJKMNPQRSTUVWXYZ` (no 0/O or 1/I/L). The host page finds the session whose `host` is the signed-in uid, or creates one with a fresh code.
 - Each phone signs in anonymously and writes one document per round, keyed by its uid. Changing a vote overwrites it.
 - Next round only increments `round`. Nothing is deleted, so every past round stays in Firestore until you reset.
 - Reset closes voting, deletes every vote in rounds 1 through the current one, then sets `round` back to 1 with voting open.
-- The rules only let a voter write their own vote, only to the current round, only while voting is open, and only a number from 0 to 10 (the slider moves in 0.1 steps; the histogram rounds each vote to the nearest whole number). Only the host can change `state/current` or read other people's votes.
+- The rules only let a voter write their own vote, only to the current round, only while voting is open, and only a number from 0 to 10 (the slider moves in 0.1 steps; the histogram rounds each vote to the nearest whole number). Only a session's host can change that session or read other people's votes in it. Creating a session requires a Google sign-in, and the creator must be its `host`.
 
 ## Limits
 
@@ -123,8 +122,8 @@ rounds/{round}/votes/{uid}  { value: 0–10, ts }
 | Pages say `Not configured` | `config.js` has placeholder values (step 2.5). |
 | Sign-in fails with `auth/unauthorized-domain` | Add the site's domain under Authentication → Settings → Authorized domains. |
 | Phones show `Couldn't connect` | Anonymous sign-in isn't enabled (step 2.2). |
-| Host page shows `Not authorized` after setup | `HOST_UID` in `config.js` doesn't match the uid shown; check for stray spaces. |
-| Dashboard errors with `permission-denied` | The uid in the published rules isn't yours, or the rules weren't published. |
+| Host page shows `Couldn't start a session` with `permission-denied` | The rules in the console don't match `firestore.rules`, or Google sign-in isn't enabled (step 2.2). |
+| Phones show `No poll with code …` | The code was mistyped; it's the `?s=` part of the join URL on the host page. |
 | Phones say `Couldn't save` while voting is open | Same as above: the rules in the console don't match `firestore.rules`. |
 
 ## Files
@@ -135,5 +134,5 @@ rounds/{round}/votes/{uid}  { value: 0–10, ts }
 | `host.html`, `host.js` | Host page |
 | `app.css` | Shared styles |
 | `firebase.js` | Firebase init and SDK imports |
-| `config.js` | Your Firebase config and host uid |
+| `config.js` | Your Firebase config |
 | `firestore.rules` | Security rules to paste into the Firebase console (not loaded by the site) |

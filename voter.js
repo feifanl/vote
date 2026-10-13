@@ -15,13 +15,19 @@ const MAX = 10;
 const snap = (v) => Math.round(Math.min(MAX, Math.max(0, v)) * 10) / 10; // 0.1 steps
 const OFFLINE_MSG = "Offline — your vote will save when you reconnect";
 
+// Join code from ?s=, typed or scanned. Codes are uppercase; accept any case.
+const code = new URLSearchParams(location.search).get("s")?.trim().toUpperCase() || null;
+
+const $voter = document.getElementById("voter");
+const $join = document.getElementById("join-form");
+const $joinError = document.getElementById("join-error");
 const $round = document.getElementById("round");
 const $value = document.getElementById("value");
 const $slider = document.getElementById("slider");
 const $status = document.getElementById("status");
 
 let uid = null;
-let round = null; // null until state/current exists
+let round = null; // null until the session loads
 let open = false;
 let value = null; // null = untouched this round
 let saved = null; // last value the server acknowledged this round
@@ -82,7 +88,7 @@ async function commit() {
   );
 
   try {
-    await setDoc(doc(db, "rounds", String(r), "votes", uid), { value: v, ts: serverTimestamp() });
+    await setDoc(voteRef(r), { value: v, ts: serverTimestamp() });
     if (r !== round) return;
     saved = v; // writes to one doc are acknowledged in order
     if (seq !== pendingSeq) return;
@@ -158,7 +164,7 @@ function flashRound() {
 
 async function loadMine(r) {
   try {
-    const snap = await getDoc(doc(db, "rounds", String(r), "votes", uid));
+    const snap = await getDoc(voteRef(r));
     if (r !== round || value !== null || !snap.exists()) return;
     value = saved = snap.data().value;
     render();
@@ -168,11 +174,26 @@ async function loadMine(r) {
   }
 }
 
+const voteRef = (r) => doc(db, "sessions", code, "rounds", String(r), "votes", uid);
+
+function showJoin(error = "") {
+  $voter.hidden = true;
+  $join.hidden = false;
+  $joinError.textContent = error;
+  $join.elements.s.value = code ?? "";
+  $join.elements.s.focus();
+}
+
 function listen() {
-  onSnapshot(
-    doc(db, "state", "current"),
+  const unsub = onSnapshot(
+    doc(db, "sessions", code),
     (snap) => {
-      const data = snap.exists() ? snap.data() : null;
+      if (!snap.exists()) {
+        unsub();
+        showJoin(`No poll with code ${code}`);
+        return;
+      }
+      const data = snap.data();
       const prev = round;
       open = data?.open === true;
       const next = data ? data.round : null;
@@ -201,6 +222,10 @@ function listen() {
 
 if (!configured) {
   setStatus("Not configured yet — see README", "error");
+} else if (!code) {
+  showJoin();
+} else if (!/^[2-9A-HJKMNP-Z]{5}$/.test(code)) {
+  showJoin(`No poll with code ${code}`);
 } else {
   onAuthStateChanged(auth, (user) => {
     if (user) {

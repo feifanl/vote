@@ -2,7 +2,6 @@ import {
   configured,
   auth,
   db,
-  HOST_UID,
   onAuthStateChanged,
   signInWithPopup,
   signOut,
@@ -16,19 +15,23 @@ import {
   onSnapshot,
   serverTimestamp,
   increment,
+  query,
+  where,
+  limit,
 } from "./firebase.js";
 
 const $ = (id) => document.getElementById(id);
 
-const JOIN_URL = new URL("./", location.href).href;
-const JOIN_TEXT = JOIN_URL.replace(/^https?:\/\//, "").replace(/\/$/, "");
+// Join codes skip 0/O, 1/I/L so they read cleanly off a projector.
+const CODE_CHARS = "23456789ABCDEFGHJKMNPQRSTUVWXYZ";
+const CODE_LENGTH = 5;
 
 // While results are hidden the page renders this instead of real data, so the
 // blur can't leak the shape of the distribution.
 const PLACEHOLDER = [1, 2, 3, 5, 7, 8, 7, 5, 3, 2, 1].flatMap((count, v) => Array(count).fill(v));
 
-const stateRef = configured && doc(db, "state", "current");
-
+let sessionRef = null;
+let joinUrl = "";
 let started = false;
 let round = null;
 let open = false;
@@ -121,7 +124,7 @@ async function write(fields) {
   if (busy || round === null) return;
   busy = true;
   try {
-    await updateDoc(stateRef, { ...fields, updated: serverTimestamp() });
+    await updateDoc(sessionRef, { ...fields, updated: serverTimestamp() });
   } catch (err) {
     say(`Couldn't update: ${err.code ?? err.message}`, true);
   } finally {
@@ -148,9 +151,9 @@ async function resetRounds() {
   busy = true;
   say("Resetting…");
   try {
-    await updateDoc(stateRef, { open: false, updated: serverTimestamp() });
+    await updateDoc(sessionRef, { open: false, updated: serverTimestamp() });
     const snaps = await Promise.all(
-      Array.from({ length: last }, (_, i) => getDocs(collection(db, "rounds", String(i + 1), "votes"))),
+      Array.from({ length: last }, (_, i) => getDocs(votesRef(i + 1))),
     );
     const refs = snaps.flatMap((s) => s.docs.map((d) => d.ref));
     for (let i = 0; i < refs.length; i += 500) {
@@ -158,7 +161,7 @@ async function resetRounds() {
       refs.slice(i, i + 500).forEach((ref) => batch.delete(ref));
       await batch.commit();
     }
-    await setDoc(stateRef, { round: 1, open: true, updated: serverTimestamp() });
+    await updateDoc(sessionRef, { round: 1, open: true, updated: serverTimestamp() });
     say(`Reset to round 1, deleted ${refs.length} votes`);
   } catch (err) {
     say(`Reset failed: ${err.code ?? err.message}`, true);
@@ -186,7 +189,7 @@ async function loadPast() {
   try {
     const rows = await Promise.all(
       rounds.map(async (r) => {
-        const s = stats(voteValues((await getDocs(collection(db, "rounds", String(r), "votes"))).docs));
+        const s = stats(voteValues((await getDocs(votesRef(r))).docs));
         return `<tr><td>${r}</td><td>${s.n}</td><td>${fmt(s.mean)}</td></tr>`;
       }),
     );
@@ -199,11 +202,35 @@ async function loadPast() {
 /* ---------------------------------------------------------------- */
 /*  Wiring                                                           */
 /* ---------------------------------------------------------------- */
+const votesRef = (r) => collection(sessionRef, "rounds", String(r), "votes");
+
+function randomCode() {
+  const bytes = crypto.getRandomValues(new Uint8Array(CODE_LENGTH));
+  return Array.from(bytes, (b) => CODE_CHARS[b % CODE_CHARS.length]).join("");
+}
+
+// Each Google account gets one session, reused across visits. A code someone
+// else already owns fails the rules (it would be an update), so pick another.
+async function findOrCreateSession(uid) {
+  const mine = await getDocs(query(collection(db, "sessions"), where("host", "==", uid), limit(1)));
+  if (!mine.empty) return mine.docs[0].ref;
+  for (let tries = 0; tries < 5; tries++) {
+    const ref = doc(db, "sessions", randomCode());
+    try {
+      await setDoc(ref, { host: uid, round: 1, open: true, updated: serverTimestamp() });
+      return ref;
+    } catch (err) {
+      if (err.code !== "permission-denied") throw err;
+    }
+  }
+  throw new Error("no free join code");
+}
+
 function subscribeVotes(r) {
   unsubVotes?.();
   votes = [];
   unsubVotes = onSnapshot(
-    collection(db, "rounds", String(r), "votes"),
+    votesRef(r),
     (snap) => {
       votes = voteValues(snap.docs);
       render();
@@ -218,7 +245,7 @@ function makeQr(el, size) {
     return;
   }
   new QRCode(el, {
-    text: JOIN_URL,
+    text: joinUrl,
     width: size,
     height: size,
     colorDark: "#000000",
@@ -228,26 +255,36 @@ function makeQr(el, size) {
   el.title = ""; // qrcodejs sets the URL as a tooltip
 }
 
-function start() {
+async function start(user) {
   if (started) return;
   started = true;
+  showGate({ title: "Loading…" });
+  try {
+    sessionRef = await findOrCreateSession(user.uid);
+  } catch (err) {
+    started = false;
+    showGate({ title: "Couldn't start a session", text: err.code ?? err.message, signedIn: true });
+    return;
+  }
   $("gate").hidden = true;
   $("host").hidden = false;
 
-  $("join-url").textContent = JOIN_TEXT;
-  $("overlay-url").textContent = JOIN_TEXT;
+  const url = new URL("./", location.href);
+  url.searchParams.set("s", sessionRef.id);
+  joinUrl = url.href;
+  const joinText = joinUrl.replace(/^https?:\/\//, "");
+  $("join-url").textContent = joinText;
+  $("overlay-url").textContent = joinText;
   makeQr($("qr-small"), 192);
   makeQr($("qr-big"), 640);
   buildHistogram();
   render();
 
   onSnapshot(
-    stateRef,
+    sessionRef,
     (snap) => {
       if (!snap.exists()) {
-        setDoc(stateRef, { round: 1, open: true, updated: serverTimestamp() }).catch((err) =>
-          say(`Couldn't create state: ${err.code ?? err.message}`, true),
-        );
+        say("Session was deleted — reload to start a new one", true);
         return;
       }
       const data = snap.data();
@@ -264,13 +301,13 @@ function start() {
   );
 }
 
-function showGate({ title, text = "", uid = null, signIn = false }) {
+function showGate({ title, text = "", signIn = false, signedIn = false }) {
+  $("gate").hidden = false;
+  $("host").hidden = true;
   $("gate-title").textContent = title;
   $("gate-text").textContent = text;
-  $("account").hidden = !uid;
-  $("uid").textContent = uid ?? "";
   $("sign-in").hidden = !signIn;
-  $("gate-sign-out").hidden = signIn || !uid;
+  $("gate-sign-out").hidden = !signedIn;
 }
 
 $("next").addEventListener("click", () => nextRound(false));
@@ -313,8 +350,7 @@ if (!configured) {
   showGate({ title: " " });
   onAuthStateChanged(auth, (user) => {
     // An anonymous voter session from index.html on this browser counts as signed out here.
-    if (!user || user.isAnonymous) showGate({ title: "Host", text: "Sign in to run the poll.", signIn: true });
-    else if (user.uid !== HOST_UID) showGate({ title: "Not authorized", uid: user.uid });
-    else start();
+    if (!user || user.isAnonymous) showGate({ title: "Host", text: "Sign in to run a poll.", signIn: true });
+    else start(user);
   });
 }

@@ -12,7 +12,7 @@
     <script type="module" src="voter.js"></script>
   </head>
   <body>
-    <main class="voter">
+    <main class="voter" id="voter">
       <div class="voter__round num" id="round">&nbsp;</div>
 
       <div class="voter__main">
@@ -45,5 +45,22 @@
 
       <p class="voter__status" id="status" role="status" aria-live="polite">Connecting…</p>
     </main>
+
+    <!-- Plain GET form: submitting reloads this page with ?s=CODE. -->
+    <form class="notice join-form" id="join-form" hidden>
+      <strong>Join a poll</strong>
+      <p class="join-form__error" id="join-error" role="alert"></p>
+      <input
+        name="s"
+        aria-label="Poll code"
+        placeholder="CODE"
+        maxlength="5"
+        autocomplete="off"
+        autocapitalize="characters"
+        spellcheck="false"
+        required
+      />
+      <button>Join</button>
+    </form>
   </body>
 </html>
